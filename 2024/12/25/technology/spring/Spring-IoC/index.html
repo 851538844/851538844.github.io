@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+
+
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+  <meta name="author" content="LON KUI">
+
+
+
+  <meta name="description" content="早起见日出">
+
+
+
+<title>Spring-IoC | 早起见日出</title><meta name="robots" content="noindex">
+
+
+
+<link rel="icon" href="/favicon.ico">
+
+
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/nprogress/nprogress.css">
+
+
+
+<script src="/lib/jquery.min.js"></script>
+
+
+<script src="/lib/iconify-icon.min.js"></script>
+
+
+<script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+<script>
+  tailwind.config = {
+    darkMode: "class",
+  };
+</script>
+
+
+<script src="/lib/nprogress/nprogress.js"></script>
+
+<script>
+  $(document).ready(() => {
+    NProgress.configure({
+      showSpinner: false,
+    });
+    NProgress.start();
+    $("#nprogress .bar").css({
+      background: "#de7441",
+    });
+    $("#nprogress .peg").css({
+      "box-shadow": "0 0 2px #de7441, 0 0 4px #de7441",
+    });
+    $("#nprogress .spinner-icon").css({
+      "border-top-color": "#de7441",
+      "border-left-color": "#de7441",
+    });
+    setTimeout(function () {
+      NProgress.done();
+      $(".fade").removeClass("out");
+    }, 800);
+  });
+</script>
+
+<script>
+  (function () {
+    const prefersDark =
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const setting = localStorage.getItem("hexo-color-scheme") || "auto";
+    if (setting === "dark" || (prefersDark && setting !== "light"))
+      document.documentElement.classList.toggle("dark", true);
+    let isDark = document.documentElement.classList.contains("dark");
+  })();
+
+  $(document).ready(function () {
+    // init icon
+    const prefersDark =
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDark = document.documentElement.classList.contains("dark");
+    $("#theme-icon").attr("icon", isDark ? "ri:moon-line" : "ri:sun-line");
+
+    function toggleGiscusTheme() {
+      const isDark = document.documentElement.classList.contains("dark");
+      const giscusFrame = document.querySelector("iframe.giscus-frame");
+      if (giscusFrame) {
+        giscusFrame.contentWindow.postMessage(
+          {
+            giscus: {
+              setConfig: {
+                theme: isDark ? "dark" : "light",
+              },
+            },
+          },
+          "https://giscus.app"
+        );
+      }
+    }
+
+
+    // toggle dark mode
+    function toggleDark() {
+      let isDark = document.documentElement.classList.contains("dark");
+      const setting = localStorage.getItem("hexo-color-scheme") || "auto";
+      isDark = !isDark;
+      document.documentElement.classList.toggle("dark", isDark);
+      $("#theme-icon").attr("icon", isDark ? "ri:moon-line" : "ri:sun-line");
+      if (prefersDark === isDark) {
+        localStorage.setItem("hexo-color-scheme", "auto");
+      } else {
+        localStorage.setItem("hexo-color-scheme", isDark ? "dark" : "light");
+      }
+      toggleGiscusTheme();
+    }
+    $("#toggle-dark").click(toggleDark);
+
+    // listen dark mode change
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", (e) => {
+        const setting = localStorage.getItem("hexo-color-scheme") || "auto";
+        if (setting === "auto") {
+          document.documentElement.classList.toggle("dark", e.matches);
+          $("#theme-icon").attr(
+            "icon",
+            e.matches ? "ri:moon-line" : "ri:sun-line"
+          );
+          toggleGiscusTheme();
+        }
+      });
+  });
+</script>
+
+
+
+
+<meta name="generator" content="Hexo 7.3.0"></head>
+<body class="font-sans bg-white dark:bg-zinc-900 text-gray-700 dark:text-gray-200 relative">
+  <header class="fixed w-full px-5 py-1 z-10 backdrop-blur-xl backdrop-saturate-150 border-b border-black/5">
+  <div class="max-auto">
+    <nav class="flex items-center text-base">
+      <a href="/" class="group">
+        <h2 class="font-medium tracking-tighterp text-l p-2">
+          <img class="w-5 mr-2 inline-block transition-transform group-hover:rotate-[30deg]" id="logo" src="/images/logo.svg" alt="早起见日出" />
+          早起见日出
+        </h2>
+      </a>
+      <div id="header-title" class="opacity-0 md:ml-2 md:mt-[0.1rem] text-xs font-medium whitespace-nowrap overflow-hidden overflow-ellipsis">
+        Spring-IoC
+      </div>
+      <div class="flex-1"></div>
+      <div class="flex items-center gap-3">
+        
+          <a class="hidden sm:flex" href="/">首页</a>
+        
+          <a class="hidden sm:flex" href="/archives">Posts</a>
+        
+        
+          
+        
+        <a class="w-5 h-5 hidden sm:flex" title="" href="rss2.xml">
+          <iconify-icon width="20" icon="ri:rss-line"></iconify-icon>
+        </a>
+        <a class="w-5 h-5" title="toggle theme" id="toggle-dark">
+          <iconify-icon width="20" icon="" id="theme-icon"></iconify-icon>
+        </a>
+      </div>
+      <div class="flex items-center justify-center gap-3 ml-3 sm:hidden">
+        <span class="w-5 h-5" aria-hidden="true" role="img" id="open-menu">
+          <iconify-icon width="20" icon="carbon:menu" ></iconify-icon>
+        </span>
+        <span class="w-5 h-5 hidden" aria-hidden="true" role="img" id="close-menu">
+          <iconify-icon  width="20" icon="carbon:close" ></iconify-icon>
+        </span>
+      </div>
+    </nav>
+  </div>
+</header>
+<div id="menu-panel" class="h-0 overflow-hidden sm:hidden fixed left-0 right-0 top-12 bottom-0 z-10">
+  <div id="menu-content" class="relative z-20 bg-white/80 px-6 sm:px-8 py-2 backdrop-blur-xl -translate-y-full transition-transform duration-300">
+    <ul class="nav flex flex-col sm:flex-row text-sm font-medium">
+      
+        <li class="nav-portfolio sm:mx-2 border-b sm:border-0 border-black/5 last:border-0 hover:text-main">
+          <a href="/" class="flex h-12 sm:h-auto items-center">首页</a>
+        </li>
+      
+        <li class="nav-portfolio sm:mx-2 border-b sm:border-0 border-black/5 last:border-0 hover:text-main">
+          <a href="/archives" class="flex h-12 sm:h-auto items-center">Posts</a>
+        </li>
+      
+    </ul>
+  </div>
+  <div class="mask bg-black/20 absolute inset-0"></div>
+</div>
+
+  <main class="pt-14">
+    <!-- css -->
+
+<link rel="stylesheet" href="/lib/fancybox/fancybox.min.css">
+
+
+<link rel="stylesheet" href="/lib/tocbot/tocbot.min.css">
+
+<!-- toc -->
+
+  <!-- tocbot -->
+<nav class="post-toc toc text-sm w-48 relative top-32 right-0 opacity-70 hidden lg:block" style="position: fixed !important;"></nav>
+
+
+<section class="px-6 max-w-prose mx-auto md:px-0">
+  <!-- header -->
+  <header class="overflow-hidden pt-6 pb-6 md:pt-12">
+    <div class="pt-4 md:pt-6">
+      <h1 id="article-title" class="text-[2rem] font-bold leading-snug mb-4 md:mb-6 md:text-[2.6rem]">
+        Spring-IoC
+      </h1>
+      <div>
+        <section class="flex items-center gap-3 text-sm">
+          <span class="flex items-center gap-1">
+            <iconify-icon width="18" icon="carbon-calendar" ></iconify-icon>
+            <time>2024-12-25</time>
+          </span>
+          <span class="text-gray-400">·</span>
+          <span class="flex items-center gap-1">
+            <iconify-icon width="18" icon="ic:round-access-alarm" ></iconify-icon>
+            <span>6 min</span>
+          </span>
+          <span class="text-gray-400">·</span>
+          <span class="flex items-center gap-1">
+            <iconify-icon width="18" icon="icon-park-outline:font-search" ></iconify-icon>
+            <span>1.8k words</span>
+          </span>
+          
+        </section>
+      </div>
+    </div>
+  </header>
+  <!-- content -->
+  <article class="post-content prose m-auto slide-enter-content dark:prose-invert">
+    <h1 id="Spring源码手写篇-手写IoC"><a href="#Spring源码手写篇-手写IoC" class="headerlink" title="Spring源码手写篇-手写IoC"></a>Spring源码手写篇-手写IoC</h1><h1 id="一、IoC分析"><a href="#一、IoC分析" class="headerlink" title="一、IoC分析"></a>一、IoC分析</h1><h2 id="1-Spring的核心"><a href="#1-Spring的核心" class="headerlink" title="1.Spring的核心"></a>1.Spring的核心</h2><p>&emsp;&emsp;在Spring中非常核心的内容是 <code>IOC</code>和 <code>AOP</code>.</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/cd57c59d998e49eb87a2272f0f4da099.png" alt="image.png"></p>
+<h2 id="2-IoC的几个疑问"><a href="#2-IoC的几个疑问" class="headerlink" title="2.IoC的几个疑问?"></a>2.IoC的几个疑问?</h2><h3 id="2-1-IoC是什么？"><a href="#2-1-IoC是什么？" class="headerlink" title="2.1 IoC是什么？"></a>2.1 IoC是什么？</h3><p>&emsp;&emsp;IoC:Inversion of Control 控制反转，简单理解就是：依赖对象的获得被反转了。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/80310b140f9342a8b6001e1f456eb8a3.png" alt="image.png"></p>
+<h3 id="2-2-IoC有什么好处"><a href="#2-2-IoC有什么好处" class="headerlink" title="2.2 IoC有什么好处?"></a>2.2 IoC有什么好处?</h3><p>IoC带来的好处：</p>
+<ol>
+<li>代码更加简洁，不需要去new 要使用的对象了</li>
+<li>面向接口编程，使用者与具体类，解耦，易扩展、替换实现者</li>
+<li>可以方便进行AOP编程</li>
+</ol>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/7ad2ade8947b4113a4dac3f3395e715f.png" alt="image.png"></p>
+<h3 id="2-3-IoC容器做了什么工作"><a href="#2-3-IoC容器做了什么工作" class="headerlink" title="2.3 IoC容器做了什么工作?"></a>2.3 IoC容器做了什么工作?</h3><p>&emsp;&emsp;IoC容器的工作：负责创建，管理类实例，向使用者提供实例。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/7cc654e667b34e2bb05003b4c320b6e5.png" alt="image.png"></p>
+<h3 id="2-4-IoC容器是否是工厂模式的实例"><a href="#2-4-IoC容器是否是工厂模式的实例" class="headerlink" title="2.4 IoC容器是否是工厂模式的实例?"></a>2.4 IoC容器是否是工厂模式的实例?</h3><p>&emsp;&emsp;是的，IoC容器负责来创建类实例对象，需要从IoC容器中get获取。IoC容器我们也称为Bean工厂。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/480d5fa007b44e648d49d34c77aeb4cd.png" alt="image.png"></p>
+<p>&emsp;&emsp;那么我们一直说的Bean是什么呢？bean：组件，也就是类的对象!!!</p>
+<h1 id="二、IoC实现"><a href="#二、IoC实现" class="headerlink" title="二、IoC实现"></a>二、IoC实现</h1><p>&emsp;&emsp;通过上面的介绍我们也清楚了IoC的核心就是Bean工厂，那么这个Bean工厂我们应该要如何来设计实现它呢？我们来继续分析。</p>
+<h2 id="1-Bean工厂的作用"><a href="#1-Bean工厂的作用" class="headerlink" title="1.Bean工厂的作用"></a>1.Bean工厂的作用</h2><p>&emsp;&emsp;首先Bean工厂的作用我们上面也分析了就是创建，管理Bean，并且需要对外提供Bean的实例。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/521438fa1977428c8765207d9c0130e5.png" alt="image.png"></p>
+<h2 id="2-Bean工厂的初步设计"><a href="#2-Bean工厂的初步设计" class="headerlink" title="2.Bean工厂的初步设计"></a>2.Bean工厂的初步设计</h2><p>&emsp;&emsp;基于Bean工厂的基本作用，我们可以来分析Bean工厂应该具备的相关行为。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/1378defbcd8147c1ae53601cef61349e.png" alt="image.png"></p>
+<p>&emsp;&emsp;首先Bean工厂应该要对外提供获取bean实例的方法，所以需要定义一个getBean()方法。同时工厂需要知道生产的bean的类型，所以getBean()方法需要接受对应的参数，同时返回类型这块也可能有多个类型，我们就用Object来表示。这样Bean工厂的定义就出来了。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/e9e8f44a98fd46779a75543398b806ad.png" alt="image.png"></p>
+<p>&emsp;&emsp;上面定义了Bean工厂对外提供bean实例的方法，但是Bean工厂如何知道要创建上面对象，怎么创建该对象呢？</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/d076f40b527e433982299f233a9dc404.png" alt="image.png"></p>
+<p>&emsp;&emsp;所以在这里我们得把Bean的定义信息告诉BeanFactory工厂，然后BeanFactory工厂根据Bean的定义信息来生成对应的bean实例对象。所以在这儿我们要考虑两个问题</p>
+<ol>
+<li>我们需要定义一个模型来表示该如何创建Bean实例的信息，也就是Bean定义。</li>
+<li>Bean工厂需要提供行为来接收这些Bean的定义信息。</li>
+</ol>
+<h2 id="3-Bean的定义"><a href="#3-Bean的定义" class="headerlink" title="3.Bean的定义"></a>3.Bean的定义</h2><p>&emsp;&emsp;根据上面的接收我们就清楚了Bean定义的意义了。那么我们来定义Bean定义的模型要考虑几个问题。</p>
+<h3 id="3-1-Bean定义的作用是什么"><a href="#3-1-Bean定义的作用是什么" class="headerlink" title="3.1 Bean定义的作用是什么?"></a>3.1 Bean定义的作用是什么?</h3><p>&emsp;&emsp;作用肯定是告诉Bean工厂应该如何来创建某类的Bean实例</p>
+<h3 id="3-2-获取实例的方式有哪些"><a href="#3-2-获取实例的方式有哪些" class="headerlink" title="3.2 获取实例的方式有哪些?"></a>3.2 获取实例的方式有哪些?</h3><p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/364e061785e5406eae76cdba339a2248.png" alt="image.png"></p>
+<h3 id="3-3-我们需要在BeanDefinition中给Bean工厂提供哪些信息"><a href="#3-3-我们需要在BeanDefinition中给Bean工厂提供哪些信息" class="headerlink" title="3.3 我们需要在BeanDefinition中给Bean工厂提供哪些信息?"></a>3.3 我们需要在BeanDefinition中给Bean工厂提供哪些信息?</h3><p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/2276051d92ac46eda9e758efea531bf3.png" alt="image.png"></p>
+<p>这样一来我们就清楚了BeanDefinition应该要具有的基本功能了。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/d40a838ed1094dca8de7be1d74b49d58.png" alt="image.png"></p>
+<h3 id="3-4-增强功能要求"><a href="#3-4-增强功能要求" class="headerlink" title="3.4 增强功能要求"></a>3.4 增强功能要求</h3><p>&emsp;&emsp;当然我们可以在现有的基础上增强要求，比如Bean工厂创建的是单例对象，具有特定的初始化方法和销毁逻辑的方法。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/2e5875faa8204904b132ce9fe29d57c9.png" alt="image.png"></p>
+<p>&emsp;&emsp;同时创建BeanDefinition的一个通用实现类：GenericBeanDefinition。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/2bbd7cd1aa7f479cad6d99d793d1ded8.png" alt="image.png"></p>
+<p>具体代码为：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * bean定义接口</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">BeanDefinition</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="type">String</span> <span class="variable">SCOPE_SINGLETION</span> <span class="operator">=</span> <span class="string">&quot;singleton&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="type">String</span> <span class="variable">SCOPE_PROTOTYPE</span> <span class="operator">=</span> <span class="string">&quot;prototype&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 类</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    Class&lt;?&gt; getBeanClass();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Scope</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    String <span class="title function_">getScope</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 是否单例</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">boolean</span> <span class="title function_">isSingleton</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 是否原型</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">boolean</span> <span class="title function_">isPrototype</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 工厂bean名</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    String <span class="title function_">getFactoryBeanName</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 工厂方法名</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    String <span class="title function_">getFactoryMethodName</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 初始化方法</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    String <span class="title function_">getInitMethodName</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 销毁方法</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    String <span class="title function_">getDestroyMethodName</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="type">boolean</span> <span class="title function_">isPrimary</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 校验bean定义的合法性</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">default</span> <span class="type">boolean</span> <span class="title function_">validate</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="comment">// 没定义class,工厂bean或工厂方法没指定，则不合法。</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">this</span>.getBeanClass() == <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (StringUtils.isBlank(getFactoryBeanName()) || StringUtils.isBlank(getFactoryMethodName())) &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 定义了类，又定义工厂bean，不合法</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">this</span>.getBeanClass() != <span class="literal">null</span> &amp;&amp; StringUtils.isNotBlank(getFactoryBeanName())) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-Bean的注册"><a href="#4-Bean的注册" class="headerlink" title="4.Bean的注册"></a>4.Bean的注册</h2><p>&emsp;&emsp;Bean的定义清楚后，我们要考虑的就是如何实现BeanDefinition和BeanFactory的关联了。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/ba1ed12a2ce845d090f600a84a9eaca9.png" alt="image.png"></p>
+<p>&emsp;&emsp;在这儿我们可以专门定义一个 <code>BeanDefinitionRegistry</code>来实现Bean定义的注册功能。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/8a4e48e221b245998c1d4197185bf466.png" alt="image.png"></p>
+<p>&emsp;&emsp;那么我们需要考虑 BeanDefinitionRegistry 应该具备的功能，其实也简单就两个：</p>
+<ol>
+<li>注册BeanDefinition</li>
+<li>获取BeanDefinition</li>
+</ol>
+<p>&emsp;&emsp;同时为了保证能够区分每个BeanDefinition的定义信息，我们得给每一个Bean定义一个唯一的名称。</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/6132d08636ae4161899f801b90af16eb.png" alt="image.png"></p>
+<p>具体实现代码:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">BeanDefinitionRegistry</span> &#123;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">void</span> <span class="title function_">registerBeanDefinition</span><span class="params">(String beanName, BeanDefinition beanDefinition)</span> <span class="keyword">throws</span> BeanDefinitionRegistException;</span><br><span class="line"></span><br><span class="line">	BeanDefinition <span class="title function_">getBeanDefinition</span><span class="params">(String beanName)</span>;</span><br><span class="line"></span><br><span class="line">	<span class="type">boolean</span> <span class="title function_">containsBeanDefinition</span><span class="params">(String beanName)</span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-BeanFactory实现"><a href="#5-BeanFactory实现" class="headerlink" title="5.BeanFactory实现"></a>5.BeanFactory实现</h2><p>&emsp;&emsp;到现在为止我们来看看已经实现的相关设计功能：</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/fe3fdeaf5ee54ab3831bedec83c22c68.png" alt="image.png"></p>
+<p>&emsp;&emsp;通过上面的分析我们接下来就要考虑BeanFactory的功能实现了。我们先来实现一个最基础的默认的Bean工厂：DefaultBeanFactory。需要DefaultBeanFactory实现如下的5个功能</p>
+<ol>
+<li>实现Bean定义信息的注册</li>
+<li>实现Bean工厂定义的getBean方法</li>
+<li>实现初始化方法的执行</li>
+<li>实现单例的要求</li>
+<li>实现容器关闭是执行单例的销毁操作</li>
+</ol>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/4541d5156de04e888f34458ab920f8f1.png" alt="image.png"></p>
+<p>具体看代码的案例代码，代码太多就不贴出来了。</p>
+<p>思考：对于单例bean，我们可否提前实例化?</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/96597cfe7982448f96c3e68b8f6e6800.png" alt="image.png"></p>
+<h1 id="三、IoC增强"><a href="#三、IoC增强" class="headerlink" title="三、IoC增强"></a>三、IoC增强</h1><p>&emsp;&emsp;上面第一版本的IoC容器我们已经实现了，我们可以在这个基础上来基础迭代增强IoC的功能</p>
+<h2 id="1-Bean别名的增强"><a href="#1-Bean别名的增强" class="headerlink" title="1.Bean别名的增强"></a>1.Bean别名的增强</h2><p>&emsp;&emsp;Bean除了标识唯一的名称外，还可以有任意个别名，别名也是唯一的。别名的特点</p>
+<ol>
+<li>可以有多个别名</li>
+<li>也可以是别名的别名</li>
+<li>别名也是唯一的</li>
+</ol>
+<p>&emsp;&emsp;&emsp;实现的时候我们需要考虑的问题</p>
+<ol>
+<li>数据结构</li>
+<li>功能点</li>
+</ol>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/a6221d511b6847a9ba05b30421b3e757.png" alt="image.png"></p>
+<p>具体代码交给大家课后尝试实现。</p>
+<h2 id="2-Type类型的增强"><a href="#2-Type类型的增强" class="headerlink" title="2. Type类型的增强"></a>2. Type类型的增强</h2><p>&emsp;&emsp;上面实现的是根据 bean的 <code>name</code>来获取Bean实例，我们还希望能扩展通过 <code>Type</code>来获取实例对象。这时对应的接口为：</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/8434bdc7e07b43c18721eb9a7deb65ec.png" alt="image.png"></p>
+<p>&emsp;&emsp;也就是需要实现根据Type找到Bean对象的功能。正常的实例逻辑为：</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/1297dc776e044ca387c942d3a2b0468b.png" alt="image.png"></p>
+<p>&emsp;&emsp;但是上面的实现方案有点吃性能，我们可以尝试优化下，我们可以提前把Type和Bean的对应关系找出来，然后用Map缓存起来处理。对应的存储方式通过Map来处理</p>
+<p>我们需要考虑几个问题：</p>
+<ol>
+<li>Map中存储的数据用什么合适？</li>
+<li>type和bean是一对一的关系吗？</li>
+<li>何时建立该关系呢？</li>
+</ol>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/ac42f182995f48f09be17df34fd3f1f1.png" alt="image.png"></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> Map&lt;Class&lt;?&gt;, Set&lt;String&gt;&gt; typeMap = <span class="keyword">new</span> <span class="title class_">ConcurrentHashMap</span>&lt;&gt;(<span class="number">256</span>);</span><br></pre></td></tr></table></figure>
+
+<p>&emsp;&emsp;具体的实现我们可以在DefaultBeanFactory中添加一个buildTypeMap()方法来处理这个事情</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/da4b3e769f9a413d88db94a377ab501e.png" alt="image.png"></p>
+<p>&emsp;&emsp;buildTypeMap()方法处理的逻辑如下：</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/373378375858412e928714a1c49dc5d4.png" alt="image.png"></p>
+<p>&emsp;&emsp;然后我们在BeanFactory中添加一个getType方法，封装获取Bean的Type的逻辑，方便buildTypeMap()方法的使用。最后就是getBean(Class<T>) 方法的实现了。因为Class对应的类型可能有多个，这时需要通过Primary来处理了。</p>
+<p>IoC容器-核心部分类图</p>
+<p><img src="https://fynotefile.oss-cn-zhangjiakou.aliyuncs.com/fynote/fyfile/1462/1661244485026/f48e4223891a4d63ad6357b959a94388.png" alt="image.png"></p>
+<p>总结：应用设计的原则：</p>
+<ol>
+<li>抽象，行为抽象分类处理(接口)</li>
+<li>继承，扩展功能</li>
+<li>面向接口编程</li>
+<li>单一职责原则</li>
+</ol>
+<!-- flag of hidden posts -->
+  </article>
+  <!-- tag -->
+  <div class="mt-12 pt-6 border-t border-gray-200">
+    
+  </div>
+  <!-- prev and next -->
+  <div class="flex justify-between mt-12 pt-6 border-t border-gray-200">
+    <div>
+      
+    </div>
+    <div>
+      
+    </div>
+  </div>
+  <!-- comment -->
+  <div class="article-comments mt-12">
+    
+
+  </div>
+</section>
+<!-- js inspect -->
+
+<script src="/lib/clipboard.min.js"></script>
+
+
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": {
+        preferredFont: "TeX",
+        availableFonts: ["STIX","TeX"],
+        linebreaks: { automatic:true },
+        EqnChunk: (MathJax.Hub.Browser.isMobile ? 10 : 50)
+    },
+    tex2jax: {
+        inlineMath: [ ["$", "$"], ["\\(","\\)"] ],
+        processEscapes: true,
+        ignoreClass: "tex2jax_ignore|dno",
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    },
+    TeX: {
+        equationNumbers: { autoNumber: "AMS" },
+        noUndefined: { attributes: { mathcolor: "red", mathbackground: "#FFEEEE", mathsize: "90%" } },
+        Macros: { href: "{}" }
+    },
+    messageStyle: "none"
+  });
+</script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+      var all = MathJax.Hub.getAllJax(), i;
+      for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+      }
+  });
+</script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+  $(document).ready(() => {
+    const maraidConfig = {
+      theme: "default",
+      logLevel: 3,
+      flowchart: { curve: "linear" },
+      gantt: { axisFormat: "%m/%d/%Y" },
+      sequence: { actorMargin: 50 },
+    };
+    mermaid.initialize(maraidConfig);
+  });
+</script>
+
+
+
+<script src="/lib/fancybox/fancybox.umd.min.js"></script>
+
+<script>
+  $(document).ready(() => {
+    $('.post-content').each(function(i){
+      $(this).find('img').each(function(){
+        if ($(this).parent().hasClass('fancybox') || $(this).parent().is('a')) return;
+        var alt = this.alt;
+        if (alt) $(this).after('<span class="fancybox-alt">' + alt + '</span>');
+        $(this).wrap('<a class="fancybox-img" href="' + this.src + '" data-fancybox=\"gallery\" data-caption="' + alt + '"></a>')
+      });
+      $(this).find('.fancybox').each(function(){
+        $(this).attr('rel', 'article' + i);
+      });
+    });
+
+    Fancybox.bind('[data-fancybox="gallery"]', {
+        // options
+    })
+  })
+</script>
+
+<!-- tocbot begin -->
+
+<script src="/lib/tocbot/tocbot.min.js"></script>
+
+<script>
+  $(document).ready(() => {
+      tocbot.init({
+        // Where to render the table of contents.
+        tocSelector: '.post-toc',
+        // Where to grab the headings to build the table of contents.
+        contentSelector: '.post-content',
+        // Which headings to grab inside of the contentSelector element.
+        headingSelector: 'h1, h2, h3',
+        // For headings inside relative or absolute positioned containers within content.
+        hasInnerContainers: true,
+    });
+  })
+</script>
+<!-- tocbot end -->
+
+
+  </main>
+  <footer class="flex flex-col h-40 items-center justify-center text-gray-400 text-sm">
+  <!-- busuanzi -->
+  
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<!-- Busuanzi Analytics -->
+<div class="flex items-center gap-2">
+  <span>Visitors</span>
+  <span id="busuanzi_value_site_uv"></span>
+  <span>Page Views</span>
+  <span id="busuanzi_value_site_pv"></span>
+</div>
+<!-- End Busuanzi Analytics -->
+
+
+  <!-- copyright -->
+  <div class="flex items-center gap-2">
+    <a target="_blank" href="https://lonkui.com" style="color: inherit;">L K</a>
+    <span>© <script>document.write(new Date().getFullYear());</script></span>
+    <iconify-icon width="18" icon="emojione-monotone:maple-leaf" ></iconify-icon>
+    <a href="https://github.com/xbmlz" target="_blank" rel="noopener noreferrer">早起见日出</a>
+  </div>
+  <!-- powered by -->
+  <div class="flex items-center gap-2">
+    <span>Powered by</span>
+    <a href="https://hexo.io/" target="_blank" rel="noopener noreferrer">Hexo</a>
+    <span>&</span>
+    <a href="https://github.com/xbmlz/hexo-theme-maple" target="_blank" rel="noopener noreferrer">DRAGON</a>
+  </div>
+
+</footer>
+
+  <div class="back-to-top box-border fixed right-6 z-1024 -bottom-20 rounded py-1 px-1 bg-slate-900 opacity-60 text-white cursor-pointer text-center dark:bg-slate-600">
+    <span class="flex justify-center items-center text-sm">
+      <iconify-icon width="18" icon="ion:arrow-up-c" id="go-top"></iconify-icon>
+      <span id="scrollpercent"><span>0</span> %</span>
+    </span>
+  </div>
+  
+<script src="/js/main.js"></script>
+
+
+  <script>
+    $(document).ready(function () {
+      const mapleCount = "10";
+      const speed = "0.5";
+      const mapleEl = document.getElementById("maple");
+      const maples = Array.from({ length: mapleCount }).map(() => {
+        const maple = document.createElement("div");
+        const scale = Math.random() * 0.5 + 0.5;
+        const offset = Math.random() * 2 - 1;
+        const x = Math.random() * mapleEl.clientWidth;
+        const y = -Math.random() * mapleEl.clientHeight;
+        const duration = 10 / speed;
+        const delay = -duration;
+        maple.className = "maple";
+        maple.style.width = `${24 * scale}px`;
+        maple.style.height = `${24 * scale}px`;
+        maple.style.left = `${x}px`;
+        maple.style.top = `${y}px`;
+        maple.style.setProperty("--maple-fall-offset", offset);
+        maple.style.setProperty("--maple-fall-height", `${Math.abs(y) + mapleEl.clientHeight}px`);
+        maple.style.animation = `fall ${duration}s linear infinite`;
+        maple.style.animationDelay = `${delay}s`;
+        mapleEl.appendChild(maple)
+        return maple
+      })
+    });
+  </script>
+  
+
+
+  <div class="fixed top-0 bottom-0 left-0 right-0 pointer-events-none print:hidden" id="maple"></div>
+</body>
+
+</html>

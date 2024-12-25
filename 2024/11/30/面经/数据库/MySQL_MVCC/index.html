@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+
+
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+  <meta name="author" content="LON KUI">
+
+
+
+  <meta name="description" content="早起见日出">
+
+
+
+<title>MySQL之MVCC | 早起见日出</title><meta name="robots" content="noindex">
+
+
+
+<link rel="icon" href="/favicon.ico">
+
+
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/nprogress/nprogress.css">
+
+
+
+<script src="/lib/jquery.min.js"></script>
+
+
+<script src="/lib/iconify-icon.min.js"></script>
+
+
+<script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+<script>
+  tailwind.config = {
+    darkMode: "class",
+  };
+</script>
+
+
+<script src="/lib/nprogress/nprogress.js"></script>
+
+<script>
+  $(document).ready(() => {
+    NProgress.configure({
+      showSpinner: false,
+    });
+    NProgress.start();
+    $("#nprogress .bar").css({
+      background: "#de7441",
+    });
+    $("#nprogress .peg").css({
+      "box-shadow": "0 0 2px #de7441, 0 0 4px #de7441",
+    });
+    $("#nprogress .spinner-icon").css({
+      "border-top-color": "#de7441",
+      "border-left-color": "#de7441",
+    });
+    setTimeout(function () {
+      NProgress.done();
+      $(".fade").removeClass("out");
+    }, 800);
+  });
+</script>
+
+<script>
+  (function () {
+    const prefersDark =
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const setting = localStorage.getItem("hexo-color-scheme") || "auto";
+    if (setting === "dark" || (prefersDark && setting !== "light"))
+      document.documentElement.classList.toggle("dark", true);
+    let isDark = document.documentElement.classList.contains("dark");
+  })();
+
+  $(document).ready(function () {
+    // init icon
+    const prefersDark =
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDark = document.documentElement.classList.contains("dark");
+    $("#theme-icon").attr("icon", isDark ? "ri:moon-line" : "ri:sun-line");
+
+    function toggleGiscusTheme() {
+      const isDark = document.documentElement.classList.contains("dark");
+      const giscusFrame = document.querySelector("iframe.giscus-frame");
+      if (giscusFrame) {
+        giscusFrame.contentWindow.postMessage(
+          {
+            giscus: {
+              setConfig: {
+                theme: isDark ? "dark" : "light",
+              },
+            },
+          },
+          "https://giscus.app"
+        );
+      }
+    }
+
+
+    // toggle dark mode
+    function toggleDark() {
+      let isDark = document.documentElement.classList.contains("dark");
+      const setting = localStorage.getItem("hexo-color-scheme") || "auto";
+      isDark = !isDark;
+      document.documentElement.classList.toggle("dark", isDark);
+      $("#theme-icon").attr("icon", isDark ? "ri:moon-line" : "ri:sun-line");
+      if (prefersDark === isDark) {
+        localStorage.setItem("hexo-color-scheme", "auto");
+      } else {
+        localStorage.setItem("hexo-color-scheme", isDark ? "dark" : "light");
+      }
+      toggleGiscusTheme();
+    }
+    $("#toggle-dark").click(toggleDark);
+
+    // listen dark mode change
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", (e) => {
+        const setting = localStorage.getItem("hexo-color-scheme") || "auto";
+        if (setting === "auto") {
+          document.documentElement.classList.toggle("dark", e.matches);
+          $("#theme-icon").attr(
+            "icon",
+            e.matches ? "ri:moon-line" : "ri:sun-line"
+          );
+          toggleGiscusTheme();
+        }
+      });
+  });
+</script>
+
+
+
+
+<meta name="generator" content="Hexo 7.3.0"></head>
+<body class="font-sans bg-white dark:bg-zinc-900 text-gray-700 dark:text-gray-200 relative">
+  <header class="fixed w-full px-5 py-1 z-10 backdrop-blur-xl backdrop-saturate-150 border-b border-black/5">
+  <div class="max-auto">
+    <nav class="flex items-center text-base">
+      <a href="/" class="group">
+        <h2 class="font-medium tracking-tighterp text-l p-2">
+          <img class="w-5 mr-2 inline-block transition-transform group-hover:rotate-[30deg]" id="logo" src="/images/logo.svg" alt="早起见日出" />
+          早起见日出
+        </h2>
+      </a>
+      <div id="header-title" class="opacity-0 md:ml-2 md:mt-[0.1rem] text-xs font-medium whitespace-nowrap overflow-hidden overflow-ellipsis">
+        MySQL之MVCC
+      </div>
+      <div class="flex-1"></div>
+      <div class="flex items-center gap-3">
+        
+          <a class="hidden sm:flex" href="/">首页</a>
+        
+          <a class="hidden sm:flex" href="/archives">Posts</a>
+        
+        
+          
+        
+        <a class="w-5 h-5 hidden sm:flex" title="" href="rss2.xml">
+          <iconify-icon width="20" icon="ri:rss-line"></iconify-icon>
+        </a>
+        <a class="w-5 h-5" title="toggle theme" id="toggle-dark">
+          <iconify-icon width="20" icon="" id="theme-icon"></iconify-icon>
+        </a>
+      </div>
+      <div class="flex items-center justify-center gap-3 ml-3 sm:hidden">
+        <span class="w-5 h-5" aria-hidden="true" role="img" id="open-menu">
+          <iconify-icon width="20" icon="carbon:menu" ></iconify-icon>
+        </span>
+        <span class="w-5 h-5 hidden" aria-hidden="true" role="img" id="close-menu">
+          <iconify-icon  width="20" icon="carbon:close" ></iconify-icon>
+        </span>
+      </div>
+    </nav>
+  </div>
+</header>
+<div id="menu-panel" class="h-0 overflow-hidden sm:hidden fixed left-0 right-0 top-12 bottom-0 z-10">
+  <div id="menu-content" class="relative z-20 bg-white/80 px-6 sm:px-8 py-2 backdrop-blur-xl -translate-y-full transition-transform duration-300">
+    <ul class="nav flex flex-col sm:flex-row text-sm font-medium">
+      
+        <li class="nav-portfolio sm:mx-2 border-b sm:border-0 border-black/5 last:border-0 hover:text-main">
+          <a href="/" class="flex h-12 sm:h-auto items-center">首页</a>
+        </li>
+      
+        <li class="nav-portfolio sm:mx-2 border-b sm:border-0 border-black/5 last:border-0 hover:text-main">
+          <a href="/archives" class="flex h-12 sm:h-auto items-center">Posts</a>
+        </li>
+      
+    </ul>
+  </div>
+  <div class="mask bg-black/20 absolute inset-0"></div>
+</div>
+
+  <main class="pt-14">
+    <!-- css -->
+
+<link rel="stylesheet" href="/lib/fancybox/fancybox.min.css">
+
+
+<link rel="stylesheet" href="/lib/tocbot/tocbot.min.css">
+
+<!-- toc -->
+
+  <!-- tocbot -->
+<nav class="post-toc toc text-sm w-48 relative top-32 right-0 opacity-70 hidden lg:block" style="position: fixed !important;"></nav>
+
+
+<section class="px-6 max-w-prose mx-auto md:px-0">
+  <!-- header -->
+  <header class="overflow-hidden pt-6 pb-6 md:pt-12">
+    <div class="pt-4 md:pt-6">
+      <h1 id="article-title" class="text-[2rem] font-bold leading-snug mb-4 md:mb-6 md:text-[2.6rem]">
+        MySQL之MVCC
+      </h1>
+      <div>
+        <section class="flex items-center gap-3 text-sm">
+          <span class="flex items-center gap-1">
+            <iconify-icon width="18" icon="carbon-calendar" ></iconify-icon>
+            <time>2024-12-16</time>
+          </span>
+          <span class="text-gray-400">·</span>
+          <span class="flex items-center gap-1">
+            <iconify-icon width="18" icon="ic:round-access-alarm" ></iconify-icon>
+            <span>6 min</span>
+          </span>
+          <span class="text-gray-400">·</span>
+          <span class="flex items-center gap-1">
+            <iconify-icon width="18" icon="icon-park-outline:font-search" ></iconify-icon>
+            <span>1.9k words</span>
+          </span>
+          
+        </section>
+      </div>
+    </div>
+  </header>
+  <!-- content -->
+  <article class="post-content prose m-auto slide-enter-content dark:prose-invert">
+    <h2 id="MySQL-中的-MVCC-是什么"><a href="#MySQL-中的-MVCC-是什么" class="headerlink" title="MySQL 中的 MVCC 是什么"></a>MySQL 中的 MVCC 是什么</h2><p>MVCC（Multi-Version Concurrency Control） 是 MySQL 数据库用来处理并发访问的技术，特别是在 InnoDB 存储引擎中，MVCC 允许多个事务并发执行而不互相干扰，确保数据的一致性和隔离性。MVCC 通过为每个数据行维护多个版本来实现这一点，每个版本对应一个特定时间点的数据状态，从而允许读操作不被写操作阻塞，同时避免数据的冲突</p>
+<p>MVCC通过三部分组件来进行实现, 分别是: <code>隐藏字段</code>, <code>undolog</code>, <code>readview</code></p>
+<p>快照读: 读取的是历史数据信息, 读取的并不是最新的数据: <code>select</code><br>当前读: 读取的都是最新的数据: <code>insert</code>, <code>update</code>, <code>delete</code>, <code>select ... lock in share mode</code>, <code>select ... for update</code></p>
+<hr>
+<h2 id="MySQL中的锁机制有哪些类型？"><a href="#MySQL中的锁机制有哪些类型？" class="headerlink" title="MySQL中的锁机制有哪些类型？"></a>MySQL中的锁机制有哪些类型？</h2><p>MySQL中的锁机制包括：</p>
+<ol>
+<li>表级锁： 锁定整个表，实现简单，开销小，但并发能力弱。</li>
+<li>行级锁： 锁定单独的行，开销大，但并发能力强。</li>
+<li>页面锁： 锁定相邻的一组行，是表级锁和行级锁的折中。</li>
+<li>意向锁： InnoDB特有，用于指示行级锁的存在。</li>
+<li>共享锁和排他锁： 共享锁允许其他事务读取，排他锁不允许其他事务访问</li>
+</ol>
+<hr>
+<h2 id="MySQL如何处理死锁？"><a href="#MySQL如何处理死锁？" class="headerlink" title="MySQL如何处理死锁？"></a>MySQL如何处理死锁？</h2><p>MySQL处理死锁的方法包括：</p>
+<ol>
+<li>死锁检测： InnoDB引擎具有死锁检测机制，能够检测到死锁并回滚一部分事务来解除死锁。</li>
+<li>超时机制： 设置锁等待超时时间（innodb_lock_wait_timeout），超过时间未获得锁则事务回滚。</li>
+<li>避免策略： 如避免长事务，合理设计索引和查询逻辑，减少锁竞争。</li>
+<li>手动干预： 分析锁等待和死锁日志，手动终止相关事务。</li>
+</ol>
+<hr>
+<h3 id="MySQL中的ACID是什么？"><a href="#MySQL中的ACID是什么？" class="headerlink" title="MySQL中的ACID是什么？"></a>MySQL中的ACID是什么？</h3><p>ACID是事务的四个基本特性：</p>
+<ol>
+<li>原子性（Atomicity）： 事务作为一个整体被执行，要么全部完成，要么全部不执行。</li>
+<li>一致性（Consistency）： 事务必须使数据库从一个一致性状态转换到另一个一致性状态。</li>
+<li>隔离性（Isolation）： 事务的执行不被其他事务干扰。</li>
+<li>持久性（Durability）： 一旦事务提交，其结果就是永久性的。</li>
+</ol>
+<p>这些特性确保了数据库事务的可靠性和稳定性。</p>
+<hr>
+<h2 id="简述在MySQL-数据库中-MyISAM-和InnoDB-的区别"><a href="#简述在MySQL-数据库中-MyISAM-和InnoDB-的区别" class="headerlink" title="简述在MySQL 数据库中 MyISAM 和InnoDB 的区别"></a>简述在MySQL 数据库中 MyISAM 和InnoDB 的区别</h2><p><strong>MyISAM：</strong><br>不支持事务， 但是每次查询都是原子的； 支持表级锁， 即每次操作是对整个表加锁； 存储表的总行数；<br>一个 MYISAM 表有三个文件： 索引文件、表结构文件、数据文件；<br>采用菲聚集索引， 索引文件的数据域存储指向数据文件的指针。辅索引与主索引基本一致， 但是辅索引不用保证唯一性。<br><strong>InnoDb：</strong><br>支持 ACID 的事务， 支持事务的四种隔离级别； 支持行级锁及外键约束： 因此可以支持写并发； 不存储总行数：<br>一个 InnoDb 引擎存储在一个文件空间（ 共享表空间， 表大小不受操作系统控制，<br>一个表可能分布在多个文件里）， 也有可能为多个（ 设置为独立表空， 表大小受操作系统文件大小限制， 一般为 2G）， 受操作系统文件大小的限制；<br>主键索引采用聚集索引（ 索引的数据域存储数据文件本身）， 辅索引的数据域存储主键的值； 因此从辅索引查找数据， 需要先通过辅索引找到主键值， 再访问辅索引； 最好使用自增主键， 防止插入数据时， 为维持 B+树结构， 文件的大调整。</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">InnoDB和MyISAM是MySQL中最常用的两种存储引擎，它们的主要区别包括：</span><br><span class="line">1、事务支持： InnoDB支持事务处理，包括ACID特性，而MyISAM不支持。</span><br><span class="line">2、行级锁定与表级锁定： InnoDB支持行级锁定，提高并发访问性能；MyISAM只支持表级锁定。</span><br><span class="line">3、外键约束： InnoDB支持外键约束，MyISAM不支持。</span><br><span class="line">4、崩溃恢复： InnoDB提供了崩溃后的自动恢复机制，而MyISAM则较为脆弱。</span><br><span class="line">5、存储限制： MyISAM支持的表大小通常更大，适用于大型的数据仓库。</span><br><span class="line">6、全文索引： MyISAM支持全文索引，InnoDB在较新版本的MySQL中也开始支持。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="MySQL中的MVCC（多版本并发控制）机制是什么？"><a href="#MySQL中的MVCC（多版本并发控制）机制是什么？" class="headerlink" title="MySQL中的MVCC（多版本并发控制）机制是什么？"></a>MySQL中的MVCC（多版本并发控制）机制是什么？</h2><blockquote>
+<p>MySQL 中InnoDB中实现了事务（多版本并发控制MVCC+锁）， 其中通过MVCC解决隔离性问题。具体而言，<strong>MVCC就是为了实现读-写冲突不加锁</strong>,</p>
+</blockquote>
+<p>MVCC是MySQL中用于实现高并发的机制。它的基本原理包括：</p>
+<ol>
+<li><strong>数据版本：</strong> 对每个数据行存储多个版本。</li>
+<li><strong>并发控制：</strong> 允许多个事务同时读取同一数据的不同版本。</li>
+<li><strong>写操作处理：</strong> 更新数据时，不直接覆盖原数据，而是创建一个新的版本。</li>
+<li><strong>隔离级别：</strong> 支持不同的事务隔离级别，以平衡性能和一致性的需求。</li>
+</ol>
+<hr>
+<h2 id="MySQL中的索引类型及其使用场景"><a href="#MySQL中的索引类型及其使用场景" class="headerlink" title="MySQL中的索引类型及其使用场景"></a>MySQL中的索引类型及其使用场景</h2><p>MySQL中常见的索引类型包括：</p>
+<ol>
+<li><strong>B-Tree索引：</strong> 适用于全值匹配、匹配列前缀、匹配范围值、精确匹配和ORDER BY操作。</li>
+<li><strong>哈希索引：</strong> 适用于等值查询，但不支持范围查询。</li>
+<li><strong>全文索引：</strong> 用于全文搜索，主要在MyISAM引擎中。</li>
+<li><strong>空间索引：</strong> 用于地理数据存储。</li>
+<li><strong>复合索引：</strong> 包含多个列，适用于多列的查询条件。</li>
+</ol>
+<p>根据不同的查询需求选择合适的索引类型可以显著提高查询效率。</p>
+<hr>
+<h2 id="MySQL中如何实现高可用架构？"><a href="#MySQL中如何实现高可用架构？" class="headerlink" title="MySQL中如何实现高可用架构？"></a>MySQL中如何实现高可用架构？</h2><p>在MySQL中实现高可用架构的常见方式包括：</p>
+<ol>
+<li>主从复制： 一个主数据库服务器和一个或多个从数据库服务器。</li>
+<li>集群部署： 如MySQL Cluster或Galera Cluster，提供故障转移和负载均衡。</li>
+<li>读写分离： 通过分离读写操作来提高性能和可用性。</li>
+<li>自动故障转移： 使用代理或中间件自动处理主服务器故障。</li>
+</ol>
+<hr>
+<h2 id="MySQL中的存储引擎有哪些？它们各有什么特点？"><a href="#MySQL中的存储引擎有哪些？它们各有什么特点？" class="headerlink" title="MySQL中的存储引擎有哪些？它们各有什么特点？"></a>MySQL中的存储引擎有哪些？它们各有什么特点？</h2><p>MySQL的常用存储引擎及其特点包括：</p>
+<ol>
+<li><strong>InnoDB：</strong> 支持事务处理，支持外键，支持行级锁定，是MySQL的默认存储引擎。</li>
+<li><strong>MyISAM：</strong> 不支持事务，支持全文搜索，支持表级锁定，拥有较高的读取速度。</li>
+<li><strong>Memory：</strong> 使用内存存储数据，访问速度快，但数据不是持久的。</li>
+<li><strong>Archive：</strong> 用于存储大量的归档数据，支持高效的数据压缩。</li>
+<li><strong>Federated：</strong> 允许访问远程MySQL服务器上的表。</li>
+</ol>
+<hr>
+<h2 id="哪些情况下会造成索引失效"><a href="#哪些情况下会造成索引失效" class="headerlink" title="哪些情况下会造成索引失效"></a>哪些情况下会造成索引失效</h2><ol>
+<li>联合索引不满足最左匹配原则</li>
+<li>使用了 ‘select * ‘</li>
+<li>索引列参与运算</li>
+<li>索引列参使用了函数</li>
+<li>字段类型不同(类型隐式转换)</li>
+<li>like左边以%开始</li>
+<li>两列做比较</li>
+<li>使用or关键字, 且关键字不全是索引列</li>
+<li>is not null</li>
+<li>not in和not exists</li>
+<li>order by导致索引失效(当查询条件涉及到order by、limit等条件时，是否走索引情况比较复杂，而且与Mysql版本有关，通常普通索引，如果未使用limit，则不会走索引。order by多个索引字段时，可能不会走索引。其他情况，建议在使用时进行expain验证。)</li>
+</ol>
+<hr>
+<h2 id="SQL优化排查方法以及优化方法"><a href="#SQL优化排查方法以及优化方法" class="headerlink" title="SQL优化排查方法以及优化方法"></a>SQL优化排查方法以及优化方法</h2><a href="/2024/11/30/%E9%9D%A2%E7%BB%8F/%E6%95%B0%E6%8D%AE%E5%BA%93/MySQL_Explain%E8%AF%A6%E8%A7%A3/" title="MySQL_Explain详解">explain详解</a>
+
+<hr>
+<!-- flag of hidden posts -->
+  </article>
+  <!-- tag -->
+  <div class="mt-12 pt-6 border-t border-gray-200">
+    
+      
+        <span class="bg-gray-100 dark:bg-gray-700 px-2 py-1 m-1 text-sm rounded-md transition-colors hover:bg-gray-200">
+          <a href="/tags/MySQL/">MySQL</a>
+        </span>
+      
+    
+  </div>
+  <!-- prev and next -->
+  <div class="flex justify-between mt-12 pt-6 border-t border-gray-200">
+    <div>
+      
+    </div>
+    <div>
+      
+    </div>
+  </div>
+  <!-- comment -->
+  <div class="article-comments mt-12">
+    
+
+  </div>
+</section>
+<!-- js inspect -->
+
+<script src="/lib/clipboard.min.js"></script>
+
+
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": {
+        preferredFont: "TeX",
+        availableFonts: ["STIX","TeX"],
+        linebreaks: { automatic:true },
+        EqnChunk: (MathJax.Hub.Browser.isMobile ? 10 : 50)
+    },
+    tex2jax: {
+        inlineMath: [ ["$", "$"], ["\\(","\\)"] ],
+        processEscapes: true,
+        ignoreClass: "tex2jax_ignore|dno",
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    },
+    TeX: {
+        equationNumbers: { autoNumber: "AMS" },
+        noUndefined: { attributes: { mathcolor: "red", mathbackground: "#FFEEEE", mathsize: "90%" } },
+        Macros: { href: "{}" }
+    },
+    messageStyle: "none"
+  });
+</script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+      var all = MathJax.Hub.getAllJax(), i;
+      for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+      }
+  });
+</script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+  $(document).ready(() => {
+    const maraidConfig = {
+      theme: "default",
+      logLevel: 3,
+      flowchart: { curve: "linear" },
+      gantt: { axisFormat: "%m/%d/%Y" },
+      sequence: { actorMargin: 50 },
+    };
+    mermaid.initialize(maraidConfig);
+  });
+</script>
+
+
+
+<script src="/lib/fancybox/fancybox.umd.min.js"></script>
+
+<script>
+  $(document).ready(() => {
+    $('.post-content').each(function(i){
+      $(this).find('img').each(function(){
+        if ($(this).parent().hasClass('fancybox') || $(this).parent().is('a')) return;
+        var alt = this.alt;
+        if (alt) $(this).after('<span class="fancybox-alt">' + alt + '</span>');
+        $(this).wrap('<a class="fancybox-img" href="' + this.src + '" data-fancybox=\"gallery\" data-caption="' + alt + '"></a>')
+      });
+      $(this).find('.fancybox').each(function(){
+        $(this).attr('rel', 'article' + i);
+      });
+    });
+
+    Fancybox.bind('[data-fancybox="gallery"]', {
+        // options
+    })
+  })
+</script>
+
+<!-- tocbot begin -->
+
+<script src="/lib/tocbot/tocbot.min.js"></script>
+
+<script>
+  $(document).ready(() => {
+      tocbot.init({
+        // Where to render the table of contents.
+        tocSelector: '.post-toc',
+        // Where to grab the headings to build the table of contents.
+        contentSelector: '.post-content',
+        // Which headings to grab inside of the contentSelector element.
+        headingSelector: 'h1, h2, h3',
+        // For headings inside relative or absolute positioned containers within content.
+        hasInnerContainers: true,
+    });
+  })
+</script>
+<!-- tocbot end -->
+
+
+  </main>
+  <footer class="flex flex-col h-40 items-center justify-center text-gray-400 text-sm">
+  <!-- busuanzi -->
+  
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<!-- Busuanzi Analytics -->
+<div class="flex items-center gap-2">
+  <span>Visitors</span>
+  <span id="busuanzi_value_site_uv"></span>
+  <span>Page Views</span>
+  <span id="busuanzi_value_site_pv"></span>
+</div>
+<!-- End Busuanzi Analytics -->
+
+
+  <!-- copyright -->
+  <div class="flex items-center gap-2">
+    <a target="_blank" href="https://lonkui.com" style="color: inherit;">L K</a>
+    <span>© <script>document.write(new Date().getFullYear());</script></span>
+    <iconify-icon width="18" icon="emojione-monotone:maple-leaf" ></iconify-icon>
+    <a href="https://github.com/xbmlz" target="_blank" rel="noopener noreferrer">早起见日出</a>
+  </div>
+  <!-- powered by -->
+  <div class="flex items-center gap-2">
+    <span>Powered by</span>
+    <a href="https://hexo.io/" target="_blank" rel="noopener noreferrer">Hexo</a>
+    <span>&</span>
+    <a href="https://github.com/xbmlz/hexo-theme-maple" target="_blank" rel="noopener noreferrer">DRAGON</a>
+  </div>
+
+</footer>
+
+  <div class="back-to-top box-border fixed right-6 z-1024 -bottom-20 rounded py-1 px-1 bg-slate-900 opacity-60 text-white cursor-pointer text-center dark:bg-slate-600">
+    <span class="flex justify-center items-center text-sm">
+      <iconify-icon width="18" icon="ion:arrow-up-c" id="go-top"></iconify-icon>
+      <span id="scrollpercent"><span>0</span> %</span>
+    </span>
+  </div>
+  
+<script src="/js/main.js"></script>
+
+
+  <script>
+    $(document).ready(function () {
+      const mapleCount = "10";
+      const speed = "0.5";
+      const mapleEl = document.getElementById("maple");
+      const maples = Array.from({ length: mapleCount }).map(() => {
+        const maple = document.createElement("div");
+        const scale = Math.random() * 0.5 + 0.5;
+        const offset = Math.random() * 2 - 1;
+        const x = Math.random() * mapleEl.clientWidth;
+        const y = -Math.random() * mapleEl.clientHeight;
+        const duration = 10 / speed;
+        const delay = -duration;
+        maple.className = "maple";
+        maple.style.width = `${24 * scale}px`;
+        maple.style.height = `${24 * scale}px`;
+        maple.style.left = `${x}px`;
+        maple.style.top = `${y}px`;
+        maple.style.setProperty("--maple-fall-offset", offset);
+        maple.style.setProperty("--maple-fall-height", `${Math.abs(y) + mapleEl.clientHeight}px`);
+        maple.style.animation = `fall ${duration}s linear infinite`;
+        maple.style.animationDelay = `${delay}s`;
+        mapleEl.appendChild(maple)
+        return maple
+      })
+    });
+  </script>
+  
+
+
+  <div class="fixed top-0 bottom-0 left-0 right-0 pointer-events-none print:hidden" id="maple"></div>
+</body>
+
+</html>
